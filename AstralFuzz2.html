@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astral Fuzz</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Rubik+Mono+One&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --primary-color: #66fcf1;
+            --accent-color: #c5c6c7;
+            --text-color: #ffffff;
+            --card-bg: rgba(19, 21, 26, 0.8);
+            --border-color: #45a29e;
+            --jagged-border: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M0 0 L10 0 L10 10 L0 10 Z' fill='none' stroke='%2345a29e' stroke-width='1' /%3E%3C/svg%3E");
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://www.transparenttextures.com/patterns/black-linen-2.png');
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .title-font {
+            font-family: 'Rubik Mono One', monospace;
+            text-shadow: 2px 2px 0px var(--border-color), 4px 4px 0px rgba(0,0,0,0.5);
+            letter-spacing: 0.1em;
+        }
+
+        .subtitle-font {
+            font-family: 'Creepster', cursive;
+            letter-spacing: 0.2em;
+        }
+        
+        .panel-container {
+            border: 2px solid var(--border-color);
+            background: var(--card-bg);
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.3), 0 0 10px rgba(0,0,0,0.8);
+        }
+
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+        
+        .custom-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: var(--primary-color);
+            cursor: pointer;
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 0 5px var(--primary-color);
+        }
+
+        .custom-range-track {
+            height: 8px;
+            background: #252831;
+            border: 1px solid #111317;
+            border-radius: 9999px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .jagged-border {
+            border-style: solid;
+            border-image-source: var(--jagged-border);
+            border-image-slice: 1;
+            border-width: 2px;
+            padding: 2px;
+        }
+
+        .toggle-switch-container {
+            width: 50px;
+            height: 28px;
+            background-color: #31333b;
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch-container.active {
+            background-color: #66fcf1;
+        }
+
+        .toggle-switch-handle {
+            width: 20px;
+            height: 20px;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            transition: transform 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .toggle-switch-container.active .toggle-switch-handle {
+            transform: translateX(22px);
+            background-color: #1a202c;
+        }
+
+        /* FIX: Ensure select text color is readable across browsers */
+        select {
+            color: var(--text-color);
+            background-color: var(--card-bg);
+        }
+        option {
+            background-color: var(--card-bg);
+        }
+
+        .db-meter-bar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.1s;
+        }
+        /* Style for the log container */
+        .log-error { color: #ff6b6b; }
+        .log-warn { color: #f9ca24; }
+        .log-info { color: #7bed9f; }
+        .log-success { color: var(--primary-color); font-weight: bold; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 sm:p-6">
+
+    <!-- Main Container -->
+    <div class="w-full max-w-4xl p-6 sm:p-10 rounded-lg text-center panel-container">
+        
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="title-font text-5xl sm:text-7xl text-primary-color">ASTRAL FUZZ</h1>
+            <p class="subtitle-font text-xl sm:text-2xl text-accent-color mt-2">The Pinnacle of Tone Synthesis</p>
+        </div>
+
+        <!-- Start Button -->
+        <button id="startButton" class="w-full sm:w-auto px-8 py-3 rounded-lg bg-primary-color text-bg-color font-bold text-lg hover:bg-opacity-80 transition-all shadow-lg">
+            <span id="startText">Start Audio</span>
+        </button>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+
+            <!-- Fuzz Archetype Panel -->
+            <div class="panel-container rounded-xl p-6 jagged-border">
+                <h2 class="text-2xl font-bold mb-4 text-border-color">Fuzz Archetype</h2>
+                <p class="text-sm mb-4">Select a classic fuzz tone and adjust its parameters. The waveshaping curve is dynamically computed based on physical models.</p>
+                <div class="mb-4">
+                    <label for="fuzz-selector" class="block text-left mb-2 text-primary-color font-bold">Model:</label>
+                    <select id="fuzz-selector" class="w-full px-4 py-2 rounded-lg bg-card-bg border-2 border-border-color text-white">
+                        <option value="maestro">Maestro FZ-1 (Gated & Thin)</option>
+                        <option value="fuzzFace">Fuzz Face (Dynamic & Smooth)</option>
+                        <option value="bigMuff">Big Muff Pi (Massive & Scooped)</option>
+                        <option value="fuzzrite">Fuzzrite (Aggressive & Trebly)</option>
+                        <option value="lovetoneBigCheese">Lovetone Big Cheese (Gated)</option>
+                        <option value="chaoticAttractor">Chaotic Attractor (Generative)</option>
+                    </select>
+                </div>
+                
+                <div class="space-y-4">
+                    <div id="preGainControl">
+                        <label for="preGain" class="block text-left mb-1 text-primary-color">Pre-Gain:</label>
+                        <input type="range" id="preGain" min="0" max="5" value="1" step="0.1" class="w-full custom-range-track custom-slider">
+                    </div>
+                    <div id="sagControl">
+                        <label for="sag" class="block text-left mb-1 text-primary-color">Sag & Bloom:</label>
+                        <input type="range" id="sag" min="0.01" max="0.99" value="0.2" step="0.01" class="w-full custom-range-track custom-slider">
+                    </div>
+                    <div id="toneControl">
+                        <label for="tone" class="block text-left mb-1 text-primary-color">Tone:</label>
+                        <input type="range" id="tone" min="-1" max="1" value="0" step="0.1" class="w-full custom-range-track custom-slider">
+                    </div>
+                    <div id="masterVolumeControl">
+                        <label for="masterVolume" class="block text-left mb-1 text-primary-color">Master Volume:</label>
+                        <input type="range" id="masterVolume" min="0" max="1" value="0.5" step="0.01" class="w-full custom-range-track custom-slider">
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-center text-accent-color" id="archetype-info"></div>
+            </div>
+
+            <!-- Input and Sampler Panel -->
+            <div class="panel-container rounded-xl p-6 jagged-border">
+                <h2 class="text-2xl font-bold mb-4 text-border-color">Audio Input</h2>
+                
+                <!-- Audio Input Section -->
+                <div class="mb-6">
+                    <p class="text-sm mb-2 text-primary-color font-bold">Live Input Toggle</p>
+                    <div class="p-4 rounded-lg bg-card-bg border-2 border-border-color">
+                        <div class="flex items-center justify-between mb-2">
+                            <span id="inputStatus" class="text-lg">Microphone Input: OFF</span>
+                            <div id="micInputToggle" class="toggle-switch-container">
+                                <div class="toggle-switch-handle"></div>
+                            </div>
+                        </div>
+                        <!-- dB Meter -->
+                        <div class="mt-2 text-xs text-center font-mono">
+                            <span id="dbValue" class="mr-2">-60 dB</span>
+                            <div class="h-2 w-full bg-gray-700 rounded-full overflow-hidden">
+                                <div id="dbBar" class="db-meter-bar"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sampler Section -->
+                <div class="mb-4">
+                    <p class="text-sm mb-2 text-primary-color font-bold">Sampler</p>
+                    <div class="p-4 rounded-lg bg-card-bg border-2 border-border-color">
+                        <p id="samplerStatus" class="text-sm mb-2 text-accent-color">No file loaded.</p>
+                        <div class="flex flex-col sm:flex-row gap-4 items-center">
+                            <label for="fileInput" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-primary-color text-bg-color font-bold cursor-pointer text-sm hover:bg-opacity-80 transition-all">
+                                Load Audio File
+                            </label>
+                            <input type="file" id="fileInput" class="hidden">
+                            <button id="playButton" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-accent-color text-bg-color font-bold text-sm hover:bg-opacity-80 transition-all" disabled>Play</button>
+                            <button id="stopButton" class="w-full sm:w-auto px-4 py-2 rounded-lg bg-red-600 text-white font-bold text-sm hover:bg-opacity-80 transition-all" disabled>Stop</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Log Container -->
+        <div id="logContainer" class="mt-8 text-sm text-accent-color bg-card-bg p-4 rounded-lg jagged-border text-left">
+            <span class="font-bold text-primary-color">Log:</span> Waiting for user interaction.
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- Global State ---
+            let isAudioActive = false;
+            let currentInputSource = null;
+            let samplerPlayer = null;
+            let micInput = null;
+            let logMessages = [];
+
+            // Chaotic Attractor state variables, persist across calls
+            let x1 = 0.1, y1 = 0, z1 = 0;
+
+            // --- Tone.js Nodes ---
+            let fuzzShaper, masterVolume, sagGain, filter, limiter, inputGain, sagFollower, inputNode, meter, preLimiter;
+            
+            // --- UI Elements ---
+            const startButton = document.getElementById('startButton');
+            const startText = document.getElementById('startText');
+            const micInputToggle = document.getElementById('micInputToggle');
+            const inputStatus = document.getElementById('inputStatus');
+            const fileInput = document.getElementById('fileInput');
+            const playButton = document.getElementById('playButton');
+            const stopButton = document.getElementById('stopButton');
+            const samplerStatus = document.getElementById('samplerStatus');
+            const fuzzSelector = document.getElementById('fuzz-selector');
+            const preGainSlider = document.getElementById('preGain');
+            const sagSlider = document.getElementById('sag');
+            const toneSlider = document.getElementById('tone');
+            const masterVolumeSlider = document.getElementById('masterVolume');
+            const archetypeInfo = document.getElementById('archetype-info');
+            const dbBar = document.getElementById('dbBar');
+            const dbValueText = document.getElementById('dbValue');
+            const logContainer = document.getElementById('logContainer');
+
+            // --- Logging Function ---
+            const log = (message, level = 'info') => {
+                const timestamp = new Date().toLocaleTimeString();
+                const levelMap = {
+                    'info': '',
+                    'warn': 'log-warn',
+                    'error': 'log-error',
+                    'success': 'log-success'
+                };
+                const classList = levelMap[level] || '';
+                const logMessage = `<span class="${classList}">[${timestamp}] ${message}</span>`;
+                logMessages.push(logMessage);
+                if (logMessages.length > 20) {
+                    logMessages.shift(); // Keep log to a reasonable size
+                }
+                logContainer.innerHTML = `<span class="font-bold text-primary-color">Log:</span><br/>${logMessages.join('<br/>')}`;
+                logContainer.scrollTop = logContainer.scrollHeight;
+            };
+
+            // --- Fuzz Archetype Parameters and Descriptions ---
+            const fuzzPresets = {
+                maestro: {
+                    name: "Maestro FZ-1",
+                    description: "Captures the sputtering, gated, and thin tone of the original low-voltage germanium circuit. Now using the Shockley Diode Equation for a more authentic clip.",
+                    preGain: 5, sag: 0.05, tone: -0.5
+                },
+                fuzzFace: {
+                    name: "Fuzz Face",
+                    description: "Models the dynamic, touch-sensitive feel of a Fuzz Face with its asymmetrical clipping. Now using a Gummel-Poon approximation for a realistic BJT curve.",
+                    preGain: 3, sag: 0.4, tone: 0.1
+                },
+                bigMuff: {
+                    name: "Big Muff Pi",
+                    description: "Emulates the massive, high-gain, and deeply compressed sound with a characteristic mid-scooped EQ. The filter is now a band-stop filter as described in the research.",
+                    preGain: 5, sag: 0.1, tone: -0.8
+                },
+                fuzzrite: {
+                    name: "Fuzzrite",
+                    description: "Replicates the raw, aggressive, and trebly sound of a silicon-based Fuzzrite. Uses an asymmetrical hard clipping model and a high-pass filter.",
+                    preGain: 4, sag: 0.1, tone: 0.8
+                },
+                lovetoneBigCheese: {
+                    name: "Lovetone Big Cheese",
+                    description: "Simulates the 'Cheese' mode with an intentionally misbiased transistor, creating dynamically gated 'amp death' tones.",
+                    preGain: 4, sag: 0.2, tone: -0.2
+                },
+                chaoticAttractor: {
+                    name: "Chaotic Attractor",
+                    description: "A generative sound source that creates unpredictable, infinitely variable textures based on a non-linear chaotic system.",
+                    preGain: 5, sag: 0.3, tone: 0
+                }
+            };
+            
+            // --- Core Fuzz Logic ---
+            const createFuzzEngine = async () => {
+                if (isAudioActive) return;
+                
+                log("Initializing fuzz engine...", 'info');
+                
+                try {
+                    await Tone.start();
+                    log("Audio context started.", 'success');
+                    
+                    inputNode = new Tone.Gain(1);
+                    meter = new Tone.Meter();
+                    sagFollower = new Tone.Follower(0.1, 0.5);
+                    preLimiter = new Tone.Limiter(-12); // Pre-gain safety limiter
+                    inputGain = new Tone.Gain(preGainSlider.value);
+                    fuzzShaper = new Tone.WaveShaper();
+                    sagGain = new Tone.Gain(1);
+                    filter = new Tone.Filter(1000, "lowpass");
+                    limiter = new Tone.Limiter(-6); // Post-effects safety limiter
+                    masterVolume = new Tone.Gain(masterVolumeSlider.value);
+                    
+                    inputNode.connect(meter);
+                    inputNode.connect(preLimiter);
+                    preLimiter.connect(inputGain);
+                    inputGain.connect(fuzzShaper);
+                    fuzzShaper.connect(sagGain);
+                    sagGain.connect(filter);
+                    filter.connect(limiter);
+                    limiter.connect(masterVolume);
+                    masterVolume.toDestination();
+
+                    inputGain.connect(sagFollower);
+                    sagFollower.connect(sagGain.gain);
+                    
+                    isAudioActive = true;
+                    startButton.disabled = true;
+                    startText.textContent = "Audio Running";
+                    log("Fuzz engine ready. Please select an input to proceed.", 'success');
+                    
+                    updateFuzzModel();
+                    updateSag();
+
+                } catch(e) {
+                    log("Failed to start audio context: " + e.message, 'error');
+                }
+            };
+            
+            const updateSag = () => {
+                if (!isAudioActive) return;
+                const sagAmount = parseFloat(sagSlider.value);
+                sagGain.gain.value = 1 - (sagAmount * 0.5);
+            };
+
+            const updateFuzzModel = () => {
+                if (!isAudioActive) return;
+
+                const preset = fuzzPresets[fuzzSelector.value];
+                if (!preset) return;
+
+                log(`Applying ${preset.name} archetype...`, 'info');
+                archetypeInfo.textContent = preset.description;
+
+                preGainSlider.value = preset.preGain;
+                sagSlider.value = preset.sag;
+                toneSlider.value = preset.tone;
+                
+                updateCurve(preset);
+            };
+
+            const updateCurve = (preset) => {
+                if (!isAudioActive) return;
+                const curveLength = 4096;
+                const curve = new Float32Array(curveLength);
+                const halfLength = curveLength / 2;
+                const preGain = parseFloat(preGainSlider.value);
+                const tone = parseFloat(toneSlider.value);
+                const Vt = 0.025;
+                const Is = 1e-9;
+                
+                for (let i = 0; i < curveLength; i++) {
+                    let x = (i / halfLength) - 1;
+                    let val = x * preGain;
+
+                    switch(fuzzSelector.value) {
+                        case 'maestro': {
+                            const n = 1.2;
+                            let gatedVal = Math.sign(val) * (Is * (Math.exp(Math.abs(val) / (n * Vt)) - 1));
+                            if (Math.abs(val) < 0.1) gatedVal = 0;
+                            curve[i] = gatedVal * 0.1;
+                            break;
+                        }
+                        case 'fuzzFace': {
+                            const n = 1.5;
+                            const is_gump = 1e-14;
+                            const ic = is_gump * (Math.exp(val / (n * Vt)) - 1);
+                            curve[i] = ic + 0.02;
+                            break;
+                        }
+                        case 'bigMuff': {
+                            const threshold = 0.3;
+                            let clipped1 = Math.max(-threshold, Math.min(threshold, val));
+                            let clipped2 = Math.max(-0.5, Math.min(0.5, clipped1 * 2));
+                            curve[i] = clipped2;
+                            filter.type = "notch";
+                            filter.frequency.value = 750;
+                            filter.Q.value = 2;
+                            break;
+                        }
+                        case 'fuzzrite': {
+                            let clipped = val > 0 ? (val * 0.8) : (val * 1.2);
+                            clipped = Math.max(-1, Math.min(1, clipped));
+                            curve[i] = clipped;
+                            filter.type = "highpass";
+                            filter.frequency.value = 120;
+                            filter.Q.value = 1;
+                            break;
+                        }
+                        case 'lovetoneBigCheese': {
+                            const gateThreshold = 0.5 - (preGain / 40);
+                            let gatedVal = val;
+                            if (Math.abs(val) < gateThreshold) {
+                                gatedVal = 0;
+                            }
+                            curve[i] = gatedVal;
+                            break;
+                        }
+                        case 'chaoticAttractor': {
+                            const sigma = 10, rho = 28, beta = 8/3;
+                            const dt = 0.001;
+                            x1 += sigma * (y1 - x1) * dt;
+                            y1 += (x1 * (rho - z1) - y1) * dt;
+                            z1 += (x1 * y1 - beta * z1) * dt;
+                            curve[i] = x1 / 20;
+                            break;
+                        }
+                    }
+                    if (fuzzSelector.value !== 'bigMuff' && fuzzSelector.value !== 'fuzzrite') {
+                        filter.type = "lowpass";
+                        filter.frequency.value = Tone.Midi(60 + tone * 10).toFrequency();
+                        filter.Q.value = 1;
+                    }
+                }
+                fuzzShaper.curve = curve;
+            };
+
+            const connectInput = (source) => {
+                if (!isAudioActive) return;
+                if (currentInputSource) {
+                    currentInputSource.disconnect();
+                }
+                currentInputSource = source;
+                if (currentInputSource) {
+                    currentInputSource.connect(inputNode);
+                }
+            };
+
+            micInputToggle.addEventListener('click', async () => {
+                if (!isAudioActive) {
+                    await createFuzzEngine();
+                }
+
+                if (micInput === null) {
+                    try {
+                        if (samplerPlayer) {
+                            samplerPlayer.stop();
+                            samplerPlayer.disconnect();
+                            playButton.disabled = true;
+                            stopButton.disabled = true;
+                            samplerStatus.textContent = `No file loaded.`;
+                        }
+
+                        micInput = new Tone.UserMedia();
+                        await micInput.open();
+                        inputStatus.textContent = "Microphone Input: ON";
+                        micInputToggle.classList.add('active');
+                        
+                        connectInput(micInput);
+                        
+                        log("Microphone input enabled.", 'success');
+                        updateDbMeter();
+                    } catch (e) {
+                        log("Failed to open microphone: " + e.message, 'error');
+                        micInput = null;
+                    }
+                } else {
+                    micInput.close();
+                    micInput.dispose();
+                    micInput = null;
+                    inputStatus.textContent = "Microphone Input: OFF";
+                    micInputToggle.classList.remove('active');
+                    connectInput(null);
+                    log("Microphone input disabled.", 'warn');
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    if (samplerPlayer) {
+                        samplerPlayer.dispose();
+                    }
+                    samplerPlayer = new Tone.Player(url, () => {
+                        samplerStatus.textContent = `Loaded: ${file.name}`;
+                        playButton.disabled = false;
+                        stopButton.disabled = false;
+                        log("Sampler ready.", 'success');
+                    });
+                }
+            });
+
+            playButton.addEventListener('click', async () => {
+                if (!isAudioActive) await createFuzzEngine();
+                
+                if (samplerPlayer && samplerPlayer.loaded) {
+                    if (micInput) {
+                        micInput.close();
+                        micInput.dispose();
+                        micInput = null;
+                        micInputToggle.classList.remove('active');
+                        inputStatus.textContent = "Microphone Input: OFF";
+                    }
+
+                    connectInput(samplerPlayer);
+                    samplerPlayer.start();
+                    log("Playing sampler.", 'success');
+                }
+            });
+
+            stopButton.addEventListener('click', () => {
+                if (samplerPlayer) {
+                    samplerPlayer.stop();
+                    connectInput(null);
+                    log("Sampler stopped.", 'warn');
+                }
+            });
+
+            function updateDbMeter() {
+                if (!meter) return;
+                const db = meter.getValue();
+                const normalizedDb = Tone.dbToGain(db);
+                const width = Math.max(0, Math.min(100, normalizedDb * 10000));
+                
+                dbBar.style.width = `${width}%`;
+                dbValueText.textContent = `${db.toFixed(1)} dB`;
+                
+                requestAnimationFrame(updateDbMeter);
+            }
+            
+            startButton.addEventListener('click', createFuzzEngine);
+            fuzzSelector.addEventListener('change', () => updateFuzzModel());
+            preGainSlider.addEventListener('input', () => {
+                if (inputGain) {
+                    inputGain.gain.value = preGainSlider.value;
+                }
+                const currentPreset = fuzzPresets[fuzzSelector.value];
+                updateCurve(currentPreset);
+            });
+            toneSlider.addEventListener('input', () => {
+                const currentPreset = fuzzPresets[fuzzSelector.value];
+                updateCurve(currentPreset);
+            });
+            sagSlider.addEventListener('input', updateSag);
+            masterVolumeSlider.addEventListener('input', () => {
+                if (masterVolume) {
+                    masterVolume.gain.value = masterVolumeSlider.value;
+                }
+            });
+            
+        });
+    </script>
+</body>
+</html>
